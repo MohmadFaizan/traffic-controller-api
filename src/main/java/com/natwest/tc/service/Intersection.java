@@ -1,7 +1,6 @@
 package com.natwest.tc.service;
 
 import com.natwest.tc.constants.Direction;
-import com.natwest.tc.model.BasicTrafficLight;
 import com.natwest.tc.model.TrafficLight;
 import jakarta.annotation.Nonnull;
 import org.springframework.stereotype.Service;
@@ -16,11 +15,9 @@ public class Intersection {
 
     public Intersection(@Nonnull final ExecutorService executor) {
         for (Direction d : Direction.values()) {
-            machine.put(d, new BasicTrafficLight(d));
+            machine.put(d, new TrafficLight(d));
         }
 
         this.executor = executor;
     }
-
-
 }
