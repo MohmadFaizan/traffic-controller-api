@@ -36,7 +36,7 @@ public class BasicTrafficLight extends TrafficLight {
     }
 
     public void setGreenDelayInSec(int greenDelayInSec) {
-        Assert.isTrue(greenDelayInSec < 1, () -> "Invalid delay for Green Signal");
+        Assert.isTrue(greenDelayInSec > 0, () -> "Invalid delay for Green Signal");
 
         this.greenDelayInSec = greenDelayInSec;
     }
@@ -46,7 +46,7 @@ public class BasicTrafficLight extends TrafficLight {
     }
 
     public void setYellowDelayInSec(final int yellowDelayInSec) {
-        Assert.isTrue(yellowDelayInSec < 1, () -> "Invalid delay for Yellow Signal");
+        Assert.isTrue(yellowDelayInSec > 0, () -> "Invalid delay for Yellow Signal");
         this.yellowDelayInSec = yellowDelayInSec;
     }
 }
