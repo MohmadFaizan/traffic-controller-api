@@ -6,8 +6,13 @@ import com.natwest.tc.constants.Signal;
 import java.io.Serializable;
 
 public class TrafficLight implements Serializable {
-    private Direction direction;
-    private Signal state;
+    private final Direction direction;
+    private final Signal state;
+
+    public TrafficLight(final Direction direction, final Signal state) {
+        this.direction = direction;
+        this.state = state;
+    }
 
     public Direction getDirection() {
         return this.direction;
