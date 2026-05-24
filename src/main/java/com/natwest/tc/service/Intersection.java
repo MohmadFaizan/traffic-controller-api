@@ -94,8 +94,6 @@ public class Intersection {
     }
 
     private void updateToGreenPhase(final SignalPhase phase) {
-        updateAllRed();
-
         signals.values().stream()
                 .filter(light -> phase.getDirections().contains(light.getDirection()))
                 .forEach(light -> light.setState(Signal.GREEN));

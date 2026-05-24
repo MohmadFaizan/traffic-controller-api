@@ -1,6 +1,7 @@
 package com.natwest.tc.model;
 
 import com.natwest.tc.constants.Direction;
+import org.springframework.util.Assert;
 
 import java.util.Set;
 
@@ -26,10 +27,12 @@ public class SignalPhase {
     }
 
     public void setGreenDelayInSec(int greenDelayInSec) {
+        Assert.isTrue(greenDelayInSec > 0, () -> "Invalid duration for Green delay");
         this.greenDelayInSec = greenDelayInSec;
     }
 
     public void setYellowDelayInSec(int yellowDelayInSec) {
+        Assert.isTrue(yellowDelayInSec > 0, () -> "Invalid duration for Yellow delay");
         this.yellowDelayInSec = yellowDelayInSec;
     }
 }
