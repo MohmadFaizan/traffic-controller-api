@@ -5,13 +5,13 @@ import com.natwest.tc.constants.Signal;
 
 import java.io.Serializable;
 
-public abstract class TrafficLight implements Serializable {
+public final class TrafficLight implements Serializable {
     private final Direction direction;
-    private final Signal state;
+    private Signal state;
 
-    TrafficLight(final Direction direction, final Signal state) {
+    public TrafficLight(final Direction direction) {
         this.direction = direction;
-        this.state = state;
+        this.state = Signal.RED;
     }
 
     public Direction getDirection() {
@@ -20,6 +20,10 @@ public abstract class TrafficLight implements Serializable {
 
     public Signal getState() {
         return this.state;
+    }
+
+    public void setState(Signal state) {
+        this.state = state;
     }
 
     public final boolean isGreen() {
