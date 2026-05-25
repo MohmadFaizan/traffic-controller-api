@@ -7,11 +7,7 @@ import com.natwest.tc.model.TrafficLight;
 import jakarta.annotation.Nonnull;
 import org.springframework.util.CollectionUtils;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
@@ -21,11 +17,12 @@ import java.util.stream.Collectors;
 
 public class Intersection {
     private final String id;
-    private final ConcurrentHashMap<Direction, TrafficLight> signals = new ConcurrentHashMap<>();
+    private final Map<Direction, TrafficLight> signals = new EnumMap<>(Direction.class);
     private List<SignalPhase> phases;
 
     private final AtomicInteger currentPhase = new AtomicInteger(0);
     private final AtomicBoolean isPaused = new AtomicBoolean(false);
+    private final AtomicBoolean isStopped = new AtomicBoolean(false);
 
     private final ReentrantLock lock = new ReentrantLock();
     private final Condition resumeCondition;
@@ -105,12 +102,20 @@ public class Intersection {
         try {
             awaitIfPaused();
 
+            checkIfStopped();
+
             lock.lock();
             signals.values().stream()
                     .filter(light -> phase.getDirections().contains(light.getDirection()))
                     .forEach(light -> light.setState(signal));
         } finally {
             lock.unlock();
+        }
+    }
+
+    private void checkIfStopped() {
+        if (this.isStopped.get()) {
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -130,7 +135,11 @@ public class Intersection {
     public void resume() {
         if (this.isPaused.get()) {
             this.isPaused.set(false);
-            resumeCondition.signalAll();
+            resumeCondition.signal();
         }
+    }
+
+    public void stop() {
+        this.isStopped.set(true);
     }
 }

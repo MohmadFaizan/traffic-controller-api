@@ -28,4 +28,12 @@ public class SequenceRequestDto implements Serializable {
     public int getYellowDelayInSec() {
         return yellowDelayInSec;
     }
+
+    public void setGreenDelayInSec(int greenDelayInSec) {
+        this.greenDelayInSec = greenDelayInSec;
+    }
+
+    public void setYellowDelayInSec(int yellowDelayInSec) {
+        this.yellowDelayInSec = yellowDelayInSec;
+    }
 }
