@@ -154,17 +154,10 @@ public class IntersectionTest {
 
         this.intersection.pause();
 
-        // Wait for signal to exceed GREEN delay
-        Thread.sleep(Constants.DEFAULT_GREEN_DELAY * 1000L);
-
         final Map<Direction, Signal> current = this.intersection.getState();
 
-        final long diffSec = (System.currentTimeMillis() - this.start) / 1000;
+        final boolean isAllRed = current.values().stream().allMatch(signal -> Signal.RED == signal);
 
-        final boolean isNSGreen = diffSec > Constants.DEFAULT_GREEN_DELAY
-                && current.get(Direction.NORTH) == Signal.GREEN
-                && current.get(Direction.SOUTH) == Signal.GREEN;
-
-        assertTrue(isNSGreen, () -> "Expected NS Green");
+        assertTrue(isAllRed, () -> "Expected ALL Red");
     }
 }

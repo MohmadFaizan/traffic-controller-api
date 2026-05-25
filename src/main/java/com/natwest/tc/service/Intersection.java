@@ -14,7 +14,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -24,9 +25,10 @@ public class Intersection {
     private List<SignalPhase> phases;
 
     private final AtomicInteger currentPhase = new AtomicInteger(0);
-    private final AtomicBoolean isRunning = new AtomicBoolean(true);
+    private final AtomicBoolean isPaused = new AtomicBoolean(false);
 
-    private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+    private final ReentrantLock lock = new ReentrantLock();
+    private final Condition resumeCondition;
 
     public Intersection(@Nonnull Consumer<Runnable> task, final List<SignalPhase> phases) {
         this.id = UUID.randomUUID().toString();
@@ -36,6 +38,7 @@ public class Intersection {
         }
 
         updateSequence(phases);
+        this.resumeCondition = lock.newCondition();
 
         task.accept(this::initiateCycle);
     }
@@ -49,7 +52,6 @@ public class Intersection {
             return;
         }
 
-        ReentrantReadWriteLock.WriteLock lock = readWriteLock.writeLock();
         try {
             lock.lock();
             this.phases = Collections.unmodifiableList(phases);
@@ -60,13 +62,11 @@ public class Intersection {
 
     private void initiateCycle() {
         while (!Thread.currentThread().isInterrupted()) {
-            if (!isRunning.get() || CollectionUtils.isEmpty(this.phases)) {
+            if (CollectionUtils.isEmpty(this.phases)) {
                 continue;
             }
 
-            ReentrantReadWriteLock.ReadLock lock = readWriteLock.readLock();
             try {
-                lock.lock();
                 final SignalPhase phase = this.phases.get(currentPhase.get());
 
                 updatePhase(phase, Signal.GREEN);
@@ -83,9 +83,17 @@ public class Intersection {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
-            } finally {
-                lock.unlock();
             }
+        }
+    }
+
+    private void updateAllRed() {
+        this.signals.values().forEach(light -> light.setState(Signal.RED));
+    }
+
+    private void awaitIfPaused() throws InterruptedException {
+        while (this.isPaused.get()) {
+            resumeCondition.await();
         }
     }
 
@@ -93,10 +101,17 @@ public class Intersection {
         Thread.sleep(delayed * 1_000L);
     }
 
-    private void updatePhase(final SignalPhase phase, final Signal signal) {
-        signals.values().stream()
-                .filter(light -> phase.getDirections().contains(light.getDirection()))
-                .forEach(light -> light.setState(signal));
+    private void updatePhase(final SignalPhase phase, final Signal signal) throws InterruptedException {
+        try {
+            awaitIfPaused();
+
+            lock.lock();
+            signals.values().stream()
+                    .filter(light -> phase.getDirections().contains(light.getDirection()))
+                    .forEach(light -> light.setState(signal));
+        } finally {
+            lock.unlock();
+        }
     }
 
     public Map<Direction, Signal> getState() {
@@ -105,10 +120,17 @@ public class Intersection {
     }
 
     public void pause() {
-        this.isRunning.set(false);
+        if (!this.isPaused.get()) {
+            this.isPaused.set(true);
+
+            updateAllRed();
+        }
     }
 
     public void resume() {
-        this.isRunning.set(true);
+        if (this.isPaused.get()) {
+            this.isPaused.set(false);
+            resumeCondition.signalAll();
+        }
     }
 }
