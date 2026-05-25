@@ -27,7 +27,7 @@ public class IntersectionTest {
     private long start;
     @BeforeEach
     void setup() {
-        this.executor = Executors.newFixedThreadPool(1);
+        this.executor = Executors.newSingleThreadExecutor();
         this.start = System.currentTimeMillis();
 
         this.intersection = new Intersection(executor::submit, List.of());
@@ -136,5 +136,35 @@ public class IntersectionTest {
         final boolean isNSYellow = diffSec >= GREEN_DELAY && current.get(Direction.NORTH) == Signal.YELLOW && current.get(Direction.SOUTH) == Signal.YELLOW;
 
         assertTrue(isNSYellow, () -> "Expected NS Yellow");
+    }
+
+    @Test
+    void test_PauseState_WithDefaultDelay() throws InterruptedException {
+        final SignalPhase nsPhase = new SignalPhase(Set.of(Direction.NORTH, Direction.SOUTH));
+
+        final List<SignalPhase> phases = new LinkedList<>();
+        phases.add(nsPhase);
+
+        this.intersection.updateSequence(phases);
+
+        final int delay = Constants.DEFAULT_GREEN_DELAY;
+
+        // Wait for signal to turn GREEN
+        Thread.sleep(delay * 100L);
+
+        this.intersection.pause();
+
+        // Wait for signal to exceed GREEN delay
+        Thread.sleep(Constants.DEFAULT_GREEN_DELAY * 1000L);
+
+        final Map<Direction, Signal> current = this.intersection.getState();
+
+        final long diffSec = (System.currentTimeMillis() - this.start) / 1000;
+
+        final boolean isNSGreen = diffSec > Constants.DEFAULT_GREEN_DELAY
+                && current.get(Direction.NORTH) == Signal.GREEN
+                && current.get(Direction.SOUTH) == Signal.GREEN;
+
+        assertTrue(isNSGreen, () -> "Expected NS Green");
     }
 }
