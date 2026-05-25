@@ -1,5 +1,6 @@
 package com.natwest.tc.model;
 
+import com.natwest.tc.constants.Constants;
 import com.natwest.tc.constants.Direction;
 import org.springframework.util.Assert;
 
@@ -7,8 +8,8 @@ import java.util.Set;
 
 public class SignalPhase {
     private final Set<Direction> directions;
-    private int greenDelayInSec;
-    private int yellowDelayInSec;
+    private int greenDelayInSec = Constants.DEFAULT_GREEN_DELAY;
+    private int yellowDelayInSec = Constants.DEFAULT_YELLOW_DELAY;
 
     public SignalPhase(Set<Direction> directions) {
         this.directions = directions;

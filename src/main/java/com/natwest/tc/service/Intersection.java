@@ -9,11 +9,13 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class Intersection {
     private final String id;
@@ -22,7 +24,7 @@ public class Intersection {
 
     private final AtomicInteger currentPhase = new AtomicInteger(0);
 
-    private final ReentrantLock lock = new ReentrantLock();
+    private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
     public Intersection(@Nonnull Consumer<Runnable> task, final List<SignalPhase> phases) {
         this.id = UUID.randomUUID().toString();
@@ -45,6 +47,7 @@ public class Intersection {
             return;
         }
 
+        ReentrantReadWriteLock.WriteLock lock = readWriteLock.writeLock();
         try {
             lock.lock();
             this.phases = Collections.unmodifiableList(phases);
@@ -54,52 +57,48 @@ public class Intersection {
     }
 
     private void initiateCycle() {
-        while (true) {
+        while (!Thread.currentThread().isInterrupted()) {
             if (CollectionUtils.isEmpty(this.phases)) {
                 continue;
             }
 
+            ReentrantReadWriteLock.ReadLock lock = readWriteLock.readLock();
             try {
                 lock.lock();
-
                 final SignalPhase phase = this.phases.get(currentPhase.get());
 
-                updateToGreenPhase(phase);
+                updatePhase(phase, Signal.GREEN);
 
                 delay(phase.getGreenDelayInSec());
 
-                updateToYellowPhase(phase);
+                updatePhase(phase, Signal.YELLOW);
 
                 delay(phase.getYellowDelayInSec());
 
-                updateAllRed();
+                updatePhase(phase, Signal.RED);
 
                 currentPhase.set((currentPhase.get() + 1) % this.phases.size());
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+                break;
             } finally {
                 lock.unlock();
             }
         }
     }
 
-    private void updateToYellowPhase(final SignalPhase phase) {
-        this.signals.values().stream()
-                .filter(light -> phase.getDirections().contains(light.getDirection()))
-                .forEach(light -> light.setState(Signal.YELLOW));
+    private void delay(final int delayed) throws InterruptedException {
+        Thread.sleep(delayed * 1_000L);
     }
 
-    private void delay(final int greenDelayInSec) throws InterruptedException {
-        Thread.sleep(greenDelayInSec * 1_000L);
-    }
-
-    private void updateToGreenPhase(final SignalPhase phase) {
+    private void updatePhase(final SignalPhase phase, final Signal signal) {
         signals.values().stream()
                 .filter(light -> phase.getDirections().contains(light.getDirection()))
-                .forEach(light -> light.setState(Signal.GREEN));
+                .forEach(light -> light.setState(signal));
     }
 
-    private void updateAllRed() {
-        this.signals.values().forEach(light -> light.setState(Signal.RED));
+    public Map<Direction, Signal> getState() {
+        return this.signals.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getState()));
     }
 }
