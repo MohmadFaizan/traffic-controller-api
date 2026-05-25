@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
@@ -23,6 +24,7 @@ public class Intersection {
     private List<SignalPhase> phases;
 
     private final AtomicInteger currentPhase = new AtomicInteger(0);
+    private final AtomicBoolean isRunning = new AtomicBoolean(true);
 
     private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
@@ -58,7 +60,7 @@ public class Intersection {
 
     private void initiateCycle() {
         while (!Thread.currentThread().isInterrupted()) {
-            if (CollectionUtils.isEmpty(this.phases)) {
+            if (!isRunning.get() || CollectionUtils.isEmpty(this.phases)) {
                 continue;
             }
 
@@ -100,5 +102,13 @@ public class Intersection {
     public Map<Direction, Signal> getState() {
         return this.signals.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getState()));
+    }
+
+    public void pause() {
+        this.isRunning.set(false);
+    }
+
+    public void resume() {
+        this.isRunning.set(true);
     }
 }

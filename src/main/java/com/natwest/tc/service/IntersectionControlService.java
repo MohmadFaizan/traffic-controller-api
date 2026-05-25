@@ -2,6 +2,7 @@ package com.natwest.tc.service;
 
 import com.natwest.tc.dto.request.NewInterSectionRequestDto;
 import com.natwest.tc.dto.request.SequenceRequestDto;
+import com.natwest.tc.exceptions.IntersectionNotFoundException;
 import com.natwest.tc.exceptions.InvalidSignalDelayException;
 import com.natwest.tc.model.SignalPhase;
 import org.springframework.stereotype.Service;
@@ -44,5 +45,23 @@ public class IntersectionControlService {
         } catch (IllegalArgumentException e) {
             throw new InvalidSignalDelayException(e.getMessage());
         }
+    }
+
+    public void pauseIntersection(final String id) {
+        if (!intersections.containsKey(id)) {
+            throw new IntersectionNotFoundException("Invalid Intersection ID");
+        }
+
+        final Intersection intersection = intersections.get(id);
+        intersection.pause();
+    }
+
+    public void resumeIntersection(final String id) {
+        if (!intersections.containsKey(id)) {
+            throw new IntersectionNotFoundException("Invalid Intersection ID");
+        }
+
+        final Intersection intersection = intersections.get(id);
+        intersection.resume();
     }
 }
