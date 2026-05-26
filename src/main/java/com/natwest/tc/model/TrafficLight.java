@@ -1,40 +1,29 @@
 package com.natwest.tc.model;
 
 import com.natwest.tc.constants.Direction;
-import com.natwest.tc.constants.Signal;
+import com.natwest.tc.service.TrafficLightState;
+import com.natwest.tc.service.impl.RedLightState;
 
 import java.io.Serializable;
 
 public final class TrafficLight implements Serializable {
     private final Direction direction;
-    private Signal state;
+    private TrafficLightState state;
 
     public TrafficLight(final Direction direction) {
         this.direction = direction;
-        this.state = Signal.RED;
+        this.state = new RedLightState();
     }
 
     public Direction getDirection() {
         return this.direction;
     }
 
-    public Signal getState() {
+    public TrafficLightState getState() {
         return this.state;
     }
 
-    public void setState(Signal state) {
+    public void setState(final TrafficLightState state) {
         this.state = state;
-    }
-
-    public final boolean isGreen() {
-        return getState() == Signal.GREEN;
-    }
-
-    public final boolean isYellow() {
-        return getState() == Signal.YELLOW;
-    }
-
-    public final boolean isRed() {
-        return !isGreen() && !isYellow();
     }
 }

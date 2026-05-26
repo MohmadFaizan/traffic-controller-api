@@ -2,10 +2,10 @@ package com.natwest.tc.service;
 
 import com.natwest.tc.constants.Direction;
 import com.natwest.tc.constants.Signal;
+import com.natwest.tc.exceptions.ConflictStateUpdateException;
 import com.natwest.tc.exceptions.InvalidStateException;
 import com.natwest.tc.model.SignalPhase;
 import com.natwest.tc.model.TrafficLight;
-import org.springframework.util.CollectionUtils;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 public class Intersection implements Runnable {
     private final String id;
     private final Map<Direction, TrafficLight> signals = new EnumMap<>(Direction.class);
-    private List<SignalPhase> phases;
+    private final List<SignalPhase> phases = new ArrayList<>(2);
 
     private final AtomicInteger currentPhaseIndex = new AtomicInteger(0);
     private final AtomicBoolean paused = new AtomicBoolean(false);
@@ -30,76 +30,134 @@ public class Intersection implements Runnable {
         for (Direction d : Direction.values()) {
             signals.put(d, new TrafficLight(d));
         }
+
+        this.phases.add(new SignalPhase(Set.of(Direction.NORTH, Direction.SOUTH)));
+        this.phases.add(new SignalPhase(Set.of(Direction.EAST, Direction.WEST)));
     }
 
     @Override
     public void run() {
         while (this.running.get()) {
-            try {
-                final SignalPhase phase = this.phases.get(currentPhaseIndex.get());
+            final SignalPhase phase = this.phases.get(this.currentPhaseIndex.get());
 
-                updatePhase(phase, Signal.GREEN);
+            delay(2);
 
-                delay(phase.getGreenDelayInSec());
-
-                updatePhase(phase, Signal.YELLOW);
-
-                delay(phase.getYellowDelayInSec());
-
-                updatePhase(phase, Signal.RED);
-
-                this.currentPhaseIndex.set((this.currentPhaseIndex.get() + 1) % this.phases.size());
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
+            updatePhase(phase);
         }
+    }
+
+    private SignalPhase getActivePhase() {
+        final Direction activeDirection = getState().entrySet().stream()
+                .filter(t -> t.getValue() != Signal.RED)
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(null);
+
+        if (activeDirection == null) {
+            return null;
+        }
+
+        return getPhaseByDirection(activeDirection);
+    }
+
+    private void updateCurrentPhaseIndex() {
+        this.currentPhaseIndex.set((this.currentPhaseIndex.get() + 1) % this.phases.size());
     }
 
     public String getId() {
         return this.id;
     }
 
-    public void updateSequence(final List<SignalPhase> phases) {
-        if (CollectionUtils.isEmpty(phases)) {
-            return;
-        }
+    public void updateSignal(final Direction targetDirection, final Signal targetColor) {
+        final SignalPhase activePhase = getActivePhase();
 
+        final SignalPhase targetPhase = getPhaseByDirection(targetDirection);
+
+        lock.lock();
         try {
-            lock.lock();
-            this.phases = Collections.unmodifiableList(phases);
+            if (activePhase == null && targetColor == Signal.RED) {
+                // All Directions RED, no update required
+                return;
+            }
+
+            if (activePhase == null) {
+                // All Directions are RED, Can update target direction
+                this.signals.values().stream()
+                        .filter(t -> targetPhase.getDirections().contains(t.getDirection()))
+                        .forEach(t -> t.setState(TrafficLightState.getState(targetColor)));
+
+                return;
+            }
+
+            validateConflict(activePhase, targetDirection, targetColor);
+        } finally {
+            this.lock.unlock();
+        }
+    }
+
+    private void validateConflict(final SignalPhase activePhase, final Direction targetDirection,
+                                  final Signal targetColor) {
+        if (!activePhase.getDirections().contains(targetDirection) && Signal.RED != targetColor) {
+            throw new ConflictStateUpdateException("Direction Conflict Detected");
+        }
+    }
+
+    private SignalPhase getPhaseByDirection(final Direction direction) {
+        lock.lock();
+        try {
+            return this.phases.stream()
+                    .filter(p -> p.getDirections().contains(direction))
+                    .findFirst()
+                    .get();
         } finally {
             lock.unlock();
         }
     }
 
-    private void updateAllRed() {
-        this.signals.values().forEach(light -> light.setState(Signal.RED));
-    }
-
-    private void awaitIfPaused() throws InterruptedException {
+    private void awaitIfPaused() {
         while (this.paused.get()) {
             delay(1);
         }
     }
 
-    private void delay(final int delayed) throws InterruptedException {
-        Thread.sleep(delayed * 1_000L);
+    private void delay(final int delayed) {
+        try {
+            Thread.sleep(delayed * 1_000L);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
-    private void updatePhase(final SignalPhase phase, final Signal signal) throws InterruptedException {
+    private void updatePhase(final SignalPhase phase) {
         awaitIfPaused();
 
-        signals.values().stream()
-                .filter(light -> phase.getDirections().contains(light.getDirection()))
-                .forEach(light -> light.setState(signal));
+        final boolean[] isYellow = {false};
 
-        delay(1);
+        lock.lock();
+        try {
+            signals.values().stream()
+                    .filter(light -> phase.getDirections().contains(light.getDirection()))
+                    .peek(light -> isYellow[0] = (light.getState().getSignal() == Signal.YELLOW))
+                    .forEach(light -> light.getState().next(light));
+
+        } finally {
+            lock.unlock();
+        }
+
+        if (isYellow[0]) {
+            updateCurrentPhaseIndex();
+        }
     }
 
     public Map<Direction, Signal> getState() {
-        return this.signals.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getState()));
+        lock.lock();
+        try {
+            return this.signals.entrySet().stream()
+                    .collect(Collectors.toMap(Map.Entry::getKey,
+                            e -> e.getValue().getState().getSignal()));
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void pause() {
