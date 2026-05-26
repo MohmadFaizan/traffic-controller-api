@@ -115,6 +115,6 @@ public class Intersection implements Runnable {
             throw new InvalidStateException("Intersection is already STOPPED");
         }
 
-        this.running.set(true);
+        this.running.set(false);
     }
 }
