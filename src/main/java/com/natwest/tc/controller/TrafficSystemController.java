@@ -36,7 +36,7 @@ public class TrafficSystemController {
     @PutMapping(value = {"/v1/{id}"}, consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<UpdateIntersectionResponse> updateIntersection(@PathVariable("id") final String id,
                                                             @RequestBody SequenceRequestDto sequence) {
-        final String currentState = intersectionControlService.updateIntersectionSequence(id, sequences);
+        final String currentState = intersectionControlService.updateIntersectionSequence(id, sequence);
 
         final UpdateIntersectionResponse response = new UpdateIntersectionResponse(id, "Intersection Updated");
 

@@ -55,6 +55,9 @@ public class IntersectionControlService {
         final Intersection intersection = intersections.get(id);
 
         final Direction direction = Direction.get(sequence.getDirection());
+        final Signal signal = Signal.get(sequence.getColor());
+
+        intersection.updateSignal(direction, signal);
 
         return intersection.getState().toString();
     }
