@@ -33,7 +33,7 @@ public class IntersectionControlService {
         try {
             final LinkedList<SignalPhase> phases = createSignalPhases(sequences);
 
-            final Intersection intersection = new Intersection(executor::submit, phases);
+            final Intersection intersection = new Intersection();
 
             this.intersections.put(intersection.getId(), intersection);
 

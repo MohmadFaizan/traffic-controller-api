@@ -30,7 +30,7 @@ public class IntersectionTest {
         this.executor = Executors.newSingleThreadExecutor();
         this.start = System.currentTimeMillis();
 
-        this.intersection = new Intersection(executor::submit, List.of());
+        this.intersection = new Intersection();
     }
 
     @AfterEach
