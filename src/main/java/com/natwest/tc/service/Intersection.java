@@ -82,16 +82,11 @@ public class Intersection implements Runnable {
                 return;
             }
 
-            if (activePhase == null) {
-                // All Directions are RED, Can update target direction
-                this.signals.values().stream()
-                        .filter(t -> targetPhase.getDirections().contains(t.getDirection()))
-                        .forEach(t -> t.setState(TrafficLightState.getState(targetColor)));
-
-                return;
-            }
-
             validateConflict(activePhase, targetDirection, targetColor);
+
+            this.signals.values().stream()
+                    .filter(t -> targetPhase.getDirections().contains(t.getDirection()))
+                    .forEach(t -> t.setState(TrafficLightState.getState(targetColor)));
         } finally {
             this.lock.unlock();
         }
@@ -99,7 +94,8 @@ public class Intersection implements Runnable {
 
     private void validateConflict(final SignalPhase activePhase, final Direction targetDirection,
                                   final Signal targetColor) {
-        if (!activePhase.getDirections().contains(targetDirection) && Signal.RED != targetColor) {
+        if (activePhase != null && !activePhase.getDirections().contains(targetDirection)
+                && Signal.RED != targetColor) {
             throw new ConflictStateUpdateException("Direction Conflict Detected");
         }
     }
