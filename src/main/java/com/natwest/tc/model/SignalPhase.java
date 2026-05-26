@@ -2,22 +2,21 @@ package com.natwest.tc.model;
 
 import com.natwest.tc.constants.Constants;
 import com.natwest.tc.constants.Direction;
-import com.natwest.tc.constants.Phase;
 import org.springframework.util.Assert;
 
 import java.util.Set;
 
 public class SignalPhase {
-    private final Phase phase;
+    private final Set<Direction> directions;
     private int greenDelayInSec = Constants.DEFAULT_GREEN_DELAY;
     private int yellowDelayInSec = Constants.DEFAULT_YELLOW_DELAY;
 
-    public SignalPhase(final Phase phase) {
-        this.phase = phase;
+    public SignalPhase(Set<Direction> directions) {
+        this.directions = directions;
     }
 
     public Set<Direction> getDirections() {
-        return this.phase.getDirections();
+        return directions;
     }
 
     public int getGreenDelayInSec() {

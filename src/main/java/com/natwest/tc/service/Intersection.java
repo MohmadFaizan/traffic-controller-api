@@ -1,7 +1,6 @@
 package com.natwest.tc.service;
 
 import com.natwest.tc.constants.Direction;
-import com.natwest.tc.constants.Phase;
 import com.natwest.tc.constants.Signal;
 import com.natwest.tc.exceptions.InvalidStateException;
 import com.natwest.tc.model.SignalPhase;
@@ -31,11 +30,6 @@ public class Intersection implements Runnable {
         for (Direction d : Direction.values()) {
             signals.put(d, new TrafficLight(d));
         }
-
-        final SignalPhase nsPhase = new SignalPhase(Phase.NS_PHASE);
-        final SignalPhase ewPhase = new SignalPhase(Phase.EW_PHASE);
-
-        this.phases = List.of(nsPhase, ewPhase);
     }
 
     @Override
@@ -66,8 +60,17 @@ public class Intersection implements Runnable {
         return this.id;
     }
 
-    public void updateSequence(final Direction direction, final Signal state) {
+    public void updateSequence(final List<SignalPhase> phases) {
+        if (CollectionUtils.isEmpty(phases)) {
+            return;
+        }
 
+        try {
+            lock.lock();
+            this.phases = Collections.unmodifiableList(phases);
+        } finally {
+            lock.unlock();
+        }
     }
 
     private void updateAllRed() {
