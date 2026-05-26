@@ -46,12 +46,12 @@ public class IntersectionControlService {
     private static LinkedList<SignalPhase> createSignalPhases(final List<SequenceRequestDto> sequences) {
         final LinkedList<SignalPhase> phases = new LinkedList<>();
         for (final SequenceRequestDto seq : sequences) {
-            final SignalPhase phase = new SignalPhase(seq.getDirections());
-
-            phase.setGreenDelayInSec(seq.getGreenDelayInSec());
-            phase.setYellowDelayInSec(seq.getYellowDelayInSec());
-
-            phases.add(phase);
+//            final SignalPhase phase = new SignalPhase(seq.getDirections());
+//
+//            phase.setGreenDelayInSec(seq.getGreenDelayInSec());
+//            phase.setYellowDelayInSec(seq.getYellowDelayInSec());
+//
+//            phases.add(phase);
         }
 
         return phases;
@@ -82,7 +82,7 @@ public class IntersectionControlService {
 
         final LinkedList<SignalPhase> phases = createSignalPhases(sequences);
 
-        intersection.updateSequence(phases);
+//        intersection.updateSequence(phases);
 
         return intersection.getState().toString();
     }
