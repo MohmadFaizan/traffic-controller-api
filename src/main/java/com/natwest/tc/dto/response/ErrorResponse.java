@@ -5,7 +5,6 @@ import java.io.Serializable;
 public class ErrorResponse implements Serializable {
     private int code;
     private String message;
-    private Object body;
 
     public int getCode() {
         return code;
@@ -21,13 +20,5 @@ public class ErrorResponse implements Serializable {
 
     public void setMessage(String message) {
         this.message = message;
-    }
-
-    public Object getBody() {
-        return body;
-    }
-
-    public void setBody(Object body) {
-        this.body = body;
     }
 }

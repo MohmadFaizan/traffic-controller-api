@@ -24,9 +24,9 @@ public class TrafficSystemController {
     @Autowired
     private IntersectionControlService intersectionControlService;
 
-    @PostMapping(value = {"/v1/create"}, consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<CreateIntersectionResponse> createNewIntersection(@RequestBody NewInterSectionRequestDto newInterSectionRequestDto) {
-        final String id = intersectionControlService.createNewInterSection(newInterSectionRequestDto);
+    @PostMapping(value = {"/v1/create"})
+    public ResponseEntity<CreateIntersectionResponse> createNewIntersection() {
+        final String id = intersectionControlService.createNewInterSection();
 
         CreateIntersectionResponse response = new CreateIntersectionResponse(id, "Intersection Created");
 
@@ -35,7 +35,7 @@ public class TrafficSystemController {
 
     @PutMapping(value = {"/v1/{id}"}, consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<UpdateIntersectionResponse> updateIntersection(@PathVariable("id") final String id,
-                                                            @RequestBody List<SequenceRequestDto> sequences) {
+                                                            @RequestBody SequenceRequestDto sequence) {
         final String currentState = intersectionControlService.updateIntersectionSequence(id, sequences);
 
         final UpdateIntersectionResponse response = new UpdateIntersectionResponse(id, "Intersection Updated");

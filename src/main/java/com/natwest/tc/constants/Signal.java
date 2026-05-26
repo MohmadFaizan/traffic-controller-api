@@ -1,5 +1,6 @@
 package com.natwest.tc.constants;
 
+import com.natwest.tc.exceptions.InvalidSignalStateException;
 import org.springframework.util.StringUtils;
 
 import java.io.Serializable;
@@ -20,7 +21,7 @@ public enum Signal implements Serializable {
         try {
             return Signal.valueOf(name);
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException(e);
+            throw new InvalidSignalStateException("Invalid Signal Name");
         }
     }
 }

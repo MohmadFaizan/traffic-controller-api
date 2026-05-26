@@ -23,6 +23,7 @@ public class Intersection implements Runnable {
     private final AtomicBoolean running = new AtomicBoolean(true);
 
     private final ReentrantLock lock = new ReentrantLock();
+    private Thread controlThread;
 
     public Intersection() {
         this.id = UUID.randomUUID().toString();
@@ -37,7 +38,8 @@ public class Intersection implements Runnable {
 
     @Override
     public void run() {
-        while (this.running.get()) {
+        controlThread = Thread.currentThread();
+        while (this.running.get() && !controlThread.isInterrupted()) {
             final SignalPhase phase = this.phases.get(this.currentPhaseIndex.get());
 
             delay(2);
@@ -174,5 +176,9 @@ public class Intersection implements Runnable {
         }
 
         this.running.set(false);
+        if (this.controlThread != null) {
+            lock.lock();
+            try { this.controlThread.interrupt(); } finally { lock.unlock(); }
+        }
     }
 }

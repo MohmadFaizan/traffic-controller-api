@@ -7,33 +7,19 @@ import java.util.Collections;
 import java.util.Set;
 
 public class SequenceRequestDto implements Serializable {
-    private final Set<Direction> directions;
-    private int greenDelayInSec;
-    private int yellowDelayInSec;
+    private final String direction;
+    private final String color;
 
-    public SequenceRequestDto(final Set<Direction> directions) {
-        this.directions = Collections.unmodifiableSet(directions);
-        this.greenDelayInSec = 15;
-        this.yellowDelayInSec = 5;
+    public SequenceRequestDto(String direction, String color) {
+        this.direction = direction;
+        this.color = color;
     }
 
-    public Set<Direction> getDirections() {
-        return directions;
+    public String getDirection() {
+        return direction;
     }
 
-    public int getGreenDelayInSec() {
-        return greenDelayInSec;
-    }
-
-    public int getYellowDelayInSec() {
-        return yellowDelayInSec;
-    }
-
-    public void setGreenDelayInSec(int greenDelayInSec) {
-        this.greenDelayInSec = greenDelayInSec;
-    }
-
-    public void setYellowDelayInSec(int yellowDelayInSec) {
-        this.yellowDelayInSec = yellowDelayInSec;
+    public String getColor() {
+        return color;
     }
 }
