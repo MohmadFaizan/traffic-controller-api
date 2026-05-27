@@ -143,4 +143,8 @@ public class Intersection implements Runnable {
 
         this.running.set(false);
     }
+
+    public boolean isPaused() {
+        return this.paused.get();
+    }
 }

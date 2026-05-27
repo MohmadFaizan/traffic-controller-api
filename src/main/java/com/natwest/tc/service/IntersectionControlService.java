@@ -1,8 +1,10 @@
 package com.natwest.tc.service;
 
+import com.natwest.tc.constants.Constants;
 import com.natwest.tc.constants.Direction;
 import com.natwest.tc.constants.Signal;
 import com.natwest.tc.dto.request.SequenceRequestDto;
+import com.natwest.tc.dto.response.IntersectionStatusResponse;
 import com.natwest.tc.exceptions.IntersectionNotFoundException;
 import org.springframework.stereotype.Service;
 
@@ -31,22 +33,18 @@ public class IntersectionControlService {
 
     }
 
-    public Map<Direction, Signal> pauseIntersection(final String id) {
+    public void pauseIntersection(final String id) {
         validateIntersectionId(id);
 
         final Intersection intersection = intersections.get(id);
         intersection.pause();
-
-        return intersection.getState();
     }
 
-    public Map<Direction, Signal> resumeIntersection(final String id) {
+    public void resumeIntersection(final String id) {
         validateIntersectionId(id);
 
         final Intersection intersection = intersections.get(id);
         intersection.resume();
-
-        return intersection.getState();
     }
 
     public String updateIntersectionSequence(final String id, final SequenceRequestDto sequence) {
@@ -79,11 +77,16 @@ public class IntersectionControlService {
         return intersection.getState().toString();
     }
 
-    public String currentStatus(final String id) {
+    public IntersectionStatusResponse currentStatus(final String id) {
         validateIntersectionId(id);
 
         final Intersection intersection = intersections.get(id);
 
-        return intersection.getState().toString();
+        final boolean isPaused = intersection.isPaused();
+        final String status = isPaused ? Constants.PAUSED : Constants.RUNNING;
+
+        final String state = intersection.getState().toString();
+
+        return new IntersectionStatusResponse(status, state);
     }
 }
