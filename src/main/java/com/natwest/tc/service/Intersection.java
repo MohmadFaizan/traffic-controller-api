@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
@@ -26,7 +25,6 @@ public class Intersection {
     private final Map<Direction, TrafficLight> signals = new EnumMap<>(Direction.class);
     private final List<SignalPhase> phases = new ArrayList<>(2);
 
-    private final AtomicInteger currentPhaseIndex = new AtomicInteger(0);
     private final AtomicBoolean paused = new AtomicBoolean(false);
     private final AtomicBoolean running = new AtomicBoolean(true);
 
@@ -92,13 +90,6 @@ public class Intersection {
         }
     }
 
-    private void validateConflict(final SignalPhase activePhase, final Direction targetDirection,
-                                  final Signal targetColor) {
-        if (!activePhase.getDirections().contains(targetDirection) && Signal.RED != targetColor) {
-            throw new ConflictStateUpdateException("Direction Conflict Detected");
-        }
-    }
-
     private void awaitIfPaused() {
         while (this.paused.get()) {
             delay(1);
@@ -111,25 +102,6 @@ public class Intersection {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-    }
-
-    private void updatePhase(final SignalPhase phase) {
-        awaitIfPaused();
-
-        final List<TrafficLight> activeLights = signals.values().stream()
-                .filter(light -> phase.getDirections().contains(light.getDirection()))
-                .toList();
-
-        activeLights.forEach(light -> light.getState().next(light));
-
-        final IntersectionHistory intersectionHistory = new IntersectionHistory();
-        intersectionHistory.setIntersectionId(getId());
-        intersectionHistory.setDirections(phase.getDirections());
-        intersectionHistory.setState(activeLights.get(0).getState().getSignal());
-        intersectionHistory.setMode("AUTO");
-        intersectionHistory.setTime(LocalDateTime.now());
-
-        this.history.add(intersectionHistory);
     }
 
     public Map<Direction, Signal> getState() {
