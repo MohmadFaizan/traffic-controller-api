@@ -1,5 +1,6 @@
 package com.natwest.tc.service;
 
+import com.natwest.tc.config.PropertyConfig;
 import com.natwest.tc.constants.Constants;
 import com.natwest.tc.constants.Direction;
 import com.natwest.tc.constants.Signal;
@@ -7,14 +8,19 @@ import com.natwest.tc.dto.request.SequenceRequestDto;
 import com.natwest.tc.dto.response.IntersectionStatusResponse;
 import com.natwest.tc.exceptions.IntersectionLimitReachedException;
 import com.natwest.tc.exceptions.IntersectionNotFoundException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
 @Service
 public class IntersectionControlService {
+
+    @Autowired
+    private PropertyConfig propertyConfig;
 
     private final ConcurrentHashMap<String, Intersection> intersections = new ConcurrentHashMap<>();
     private final ExecutorService executor;
@@ -24,7 +30,7 @@ public class IntersectionControlService {
     }
 
     public String createNewInterSection() {
-        if (intersections.size() == 10) {
+        if (this.intersections.size() == this.propertyConfig.getMaxIntersectionAllowed()) {
             throw new IntersectionLimitReachedException("Max Intersections already created. Delete existing intersections first!");
         }
 
@@ -52,7 +58,7 @@ public class IntersectionControlService {
         intersection.resume();
     }
 
-    public String updateIntersectionSequence(final String id, final SequenceRequestDto sequence) {
+    public void updateIntersectionSequence(final String id, final SequenceRequestDto sequence) {
         validateIntersectionId(id);
 
         final Intersection intersection = intersections.get(id);
@@ -61,8 +67,6 @@ public class IntersectionControlService {
         final Signal signal = Signal.get(sequence.getColor());
 
         intersection.updateSignal(direction, signal);
-
-        return intersection.getState().toString();
     }
 
     private void validateIntersectionId(final String id) {
@@ -93,5 +97,9 @@ public class IntersectionControlService {
         final String state = intersection.getState().toString();
 
         return new IntersectionStatusResponse(status, state);
+    }
+
+    public List<String> getAllIntersectionIds() {
+        return this.intersections.keySet().stream().toList();
     }
 }

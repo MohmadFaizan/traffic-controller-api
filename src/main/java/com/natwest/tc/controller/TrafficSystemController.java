@@ -1,7 +1,5 @@
 package com.natwest.tc.controller;
 
-import com.natwest.tc.constants.Direction;
-import com.natwest.tc.constants.Signal;
 import com.natwest.tc.dto.request.SequenceRequestDto;
 import com.natwest.tc.dto.response.CreateIntersectionResponse;
 import com.natwest.tc.dto.response.DeleteIntersectionResponse;
@@ -13,7 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
+import java.util.List;
 
 @RestController
 @RequestMapping("/intersection")
@@ -34,7 +32,7 @@ public class TrafficSystemController {
     @PutMapping(value = {"/v1/{id}"}, consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<UpdateIntersectionResponse> updateIntersection(@PathVariable("id") final String id,
                                                             @RequestBody SequenceRequestDto sequence) {
-        final String currentState = intersectionControlService.updateIntersectionSequence(id, sequence);
+        intersectionControlService.updateIntersectionSequence(id, sequence);
 
         final UpdateIntersectionResponse response = new UpdateIntersectionResponse(id, "Intersection Updated");
 
@@ -69,5 +67,12 @@ public class TrafficSystemController {
         final IntersectionStatusResponse currentState = intersectionControlService.currentStatus(id);
 
         return ResponseEntity.ok(currentState);
+    }
+
+    @GetMapping(value = {"/v1"}, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<String>> getAllIntersection() {
+        final List<String> ids = intersectionControlService.getAllIntersectionIds();
+
+        return ResponseEntity.ok(ids);
     }
 }
