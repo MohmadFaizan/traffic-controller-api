@@ -5,6 +5,7 @@ import com.natwest.tc.constants.Direction;
 import com.natwest.tc.constants.Signal;
 import com.natwest.tc.dto.request.SequenceRequestDto;
 import com.natwest.tc.dto.response.IntersectionStatusResponse;
+import com.natwest.tc.exceptions.IntersectionLimitReachedException;
 import com.natwest.tc.exceptions.IntersectionNotFoundException;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +24,10 @@ public class IntersectionControlService {
     }
 
     public String createNewInterSection() {
+        if (intersections.size() == 10) {
+            throw new IntersectionLimitReachedException("Max Intersections already created. Delete existing intersections first!");
+        }
+
         final Intersection intersection = new Intersection();
 
         this.intersections.put(intersection.getId(), intersection);
