@@ -4,21 +4,27 @@ import com.natwest.tc.constants.Direction;
 import com.natwest.tc.constants.Signal;
 import com.natwest.tc.exceptions.ConflictStateUpdateException;
 import com.natwest.tc.exceptions.InvalidStateException;
-import com.natwest.tc.model.SignalCycle;
+import com.natwest.tc.model.IntersectionHistory;
 import com.natwest.tc.model.SignalPhase;
 import com.natwest.tc.model.TrafficLight;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-public class Intersection implements Runnable {
+public class Intersection {
+    private static final Logger logger = LoggerFactory.getLogger(Intersection.class);
+    private final CopyOnWriteArrayList<IntersectionHistory> history = new CopyOnWriteArrayList<>();
+
     private final String id;
     private final Map<Direction, TrafficLight> signals = new EnumMap<>(Direction.class);
     private final List<SignalPhase> phases = new ArrayList<>(2);
-    private final SignalCycle cycle;
 
     private final AtomicInteger currentPhaseIndex = new AtomicInteger(0);
     private final AtomicBoolean paused = new AtomicBoolean(false);
@@ -35,33 +41,6 @@ public class Intersection implements Runnable {
 
         this.phases.add(new SignalPhase(Set.of(Direction.NORTH, Direction.SOUTH)));
         this.phases.add(new SignalPhase(Set.of(Direction.EAST, Direction.WEST)));
-
-        this.cycle = new SignalCycle(Signal.values().length);
-    }
-
-    @Override
-    public void run() {
-        while (this.running.get()) {
-            cycle.next();
-
-            final SignalPhase phase = getActivePhase();
-
-            updatePhase(phase);
-
-            if (cycle.isCompleted()) {
-                updateCurrentPhaseIndex();
-            } else {
-                delay(5);
-            }
-        }
-    }
-
-    private SignalPhase getActivePhase() {
-        return this.phases.get(this.currentPhaseIndex.get());
-    }
-
-    private void updateCurrentPhaseIndex() {
-        this.currentPhaseIndex.set((this.currentPhaseIndex.get() + 1) % this.phases.size());
     }
 
     public String getId() {
@@ -69,15 +48,45 @@ public class Intersection implements Runnable {
     }
 
     public void updateSignal(final Direction targetDirection, final Signal targetColor) {
-        final SignalPhase activePhase = getActivePhase();
+        if (this.isPaused()) {
+            throw new InvalidStateException("Intersection is in Pause Mode");
+        }
 
         lock.lock();
         try {
-            validateConflict(activePhase, targetDirection, targetColor);
+            final Set<Direction> phase = this.phases.stream()
+                    .map(SignalPhase::getDirections)
+                    .filter(directions -> directions.contains(targetDirection))
+                    .flatMap(Set::stream)
+                    .collect(Collectors.toSet());
+
+            final TrafficLightState lastState = this.signals.values().stream()
+                    .filter(trafficLight -> phase.contains(trafficLight.getDirection()))
+                    .map(TrafficLight::getState)
+                    .findFirst().orElse(null);
 
             this.signals.values().stream()
-                    .filter(t -> activePhase.getDirections().contains(t.getDirection()))
+                    .filter(light -> phase.contains(light.getDirection()))
                     .forEach(t -> t.setState(TrafficLightState.getState(targetColor)));
+
+            try {
+                ConflictValidator.validate(this.signals);
+            } catch (ConflictStateUpdateException e) {
+                this.signals.values().stream()
+                        .filter(light -> phase.contains(light.getDirection()))
+                        .forEach(t -> t.setState(lastState));
+
+                throw e;
+            }
+
+            final IntersectionHistory history = new IntersectionHistory();
+            history.setIntersectionId(getId());
+            history.setDirections(phase);
+            history.setState(targetColor);
+            history.setMode("MANUAL");
+            history.setTime(LocalDateTime.now());
+
+            this.history.add(history);
         } finally {
             this.lock.unlock();
         }
@@ -107,14 +116,20 @@ public class Intersection implements Runnable {
     private void updatePhase(final SignalPhase phase) {
         awaitIfPaused();
 
-        lock.lock();
-        try {
-            signals.values().stream()
-                    .filter(light -> phase.getDirections().contains(light.getDirection()))
-                    .forEach(light -> light.getState().next(light));
-        } finally {
-            lock.unlock();
-        }
+        final List<TrafficLight> activeLights = signals.values().stream()
+                .filter(light -> phase.getDirections().contains(light.getDirection()))
+                .toList();
+
+        activeLights.forEach(light -> light.getState().next(light));
+
+        final IntersectionHistory intersectionHistory = new IntersectionHistory();
+        intersectionHistory.setIntersectionId(getId());
+        intersectionHistory.setDirections(phase.getDirections());
+        intersectionHistory.setState(activeLights.get(0).getState().getSignal());
+        intersectionHistory.setMode("AUTO");
+        intersectionHistory.setTime(LocalDateTime.now());
+
+        this.history.add(intersectionHistory);
     }
 
     public Map<Direction, Signal> getState() {
@@ -129,11 +144,25 @@ public class Intersection implements Runnable {
     }
 
     public void pause() {
-        this.paused.compareAndSet(false, true);
+        final IntersectionHistory intersectionHistory = new IntersectionHistory();
+        intersectionHistory.setIntersectionId(getId());
+        intersectionHistory.setTime(LocalDateTime.now());
+        intersectionHistory.setPaused(true);
+
+        boolean updated = this.paused.compareAndSet(false, true);
+
+        if (updated) this.history.add(intersectionHistory);
     }
 
     public void resume() {
-        this.paused.compareAndSet(true, false);
+        final IntersectionHistory intersectionHistory = new IntersectionHistory();
+        intersectionHistory.setIntersectionId(getId());
+        intersectionHistory.setTime(LocalDateTime.now());
+        intersectionHistory.setPaused(false);
+
+        boolean updated = this.paused.compareAndSet(true, false);
+
+        if (updated) this.history.add(intersectionHistory);
     }
 
     public void stop() {
@@ -146,5 +175,9 @@ public class Intersection implements Runnable {
 
     public boolean isPaused() {
         return this.paused.get();
+    }
+
+    public List<IntersectionHistory> getHistory() {
+        return new ArrayList<>(this.history);
     }
 }

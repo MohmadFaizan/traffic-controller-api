@@ -3,29 +3,22 @@ package com.natwest.tc.model;
 import com.natwest.tc.constants.Direction;
 import com.natwest.tc.constants.Signal;
 import com.natwest.tc.exceptions.ConflictStateUpdateException;
+import com.natwest.tc.exceptions.InvalidStateException;
 import com.natwest.tc.service.Intersection;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class IntersectionTest {
 
-    private ExecutorService executor;
     private Intersection intersection;
 
     @BeforeEach
     void setup() {
         intersection = new Intersection();
-        executor = Executors.newSingleThreadExecutor();
-
-        executor.submit(intersection);
-    }
-
-    @AfterEach
-    void destroy() {
-        executor.shutdown();
     }
 
     @Test
@@ -57,23 +50,51 @@ public class IntersectionTest {
     }
 
     @Test
-    public void test_IntersectionState() {
+    public void test_IntersectionInitialState_Red() {
         Map<Direction, Signal> state = intersection.getState();
 
-        Assertions.assertNotNull(state);
+        final boolean activeSignalFound = state.values().stream().anyMatch(s -> !s.isRed());
+
+        Assertions.assertFalse(activeSignalFound);
+    }
+
+    @Test
+    public void test_Intersection_TargetState() {
+        final Direction direction = Direction.NORTH;
+        final Signal signal = Signal.GREEN;
+
+        intersection.updateSignal(direction, signal);
+
+        Map<Direction, Signal> state = intersection.getState();
+
+        final boolean activeSignalFound = state.entrySet().stream()
+                .anyMatch(e -> e.getKey() == direction && e.getValue() == signal);
+
+        Assertions.assertTrue(activeSignalFound);
     }
 
     @Test
     public void test_Intersection_WhenConflictUpdate() {
+        intersection.updateSignal(Direction.NORTH, Signal.GREEN);
+
+        Assertions.assertThrows(ConflictStateUpdateException.class,
+                () -> intersection.updateSignal(Direction.EAST, Signal.GREEN));
+    }
+
+    @Test
+    public void test_Intersection_ShouldUpdate_WhenNoConflict() {
+        intersection.updateSignal(Direction.NORTH, Signal.GREEN);
+
+        intersection.updateSignal(Direction.EAST, Signal.RED);
+    }
+
+    @Test
+    public void test_Intersection_When_UpdateInPauseMode() {
+        intersection.updateSignal(Direction.NORTH, Signal.GREEN);
+
         intersection.pause();
 
-        Map<Direction, Signal> state = intersection.getState();
-
-        final Direction d = state.entrySet().stream()
-                .filter(e -> e.getValue() == Signal.RED)
-                .map(Map.Entry::getKey)
-                .findFirst().orElse(null);
-
-        Assertions.assertThrows(ConflictStateUpdateException.class, () -> intersection.updateSignal(d, Signal.GREEN));
+        Assertions.assertThrows(InvalidStateException.class,
+                () -> intersection.updateSignal(Direction.EAST, Signal.RED));
     }
 }

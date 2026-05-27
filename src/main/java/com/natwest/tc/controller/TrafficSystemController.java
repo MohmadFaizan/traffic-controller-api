@@ -5,6 +5,7 @@ import com.natwest.tc.dto.response.CreateIntersectionResponse;
 import com.natwest.tc.dto.response.DeleteIntersectionResponse;
 import com.natwest.tc.dto.response.IntersectionStatusResponse;
 import com.natwest.tc.dto.response.UpdateIntersectionResponse;
+import com.natwest.tc.model.IntersectionHistory;
 import com.natwest.tc.service.IntersectionControlService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -74,5 +75,12 @@ public class TrafficSystemController {
         final List<String> ids = intersectionControlService.getAllIntersectionIds();
 
         return ResponseEntity.ok(ids);
+    }
+
+    @GetMapping(value = {"/v1/{id}/history"}, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<IntersectionHistory>> getIntersectionHistory(@PathVariable("id") final String id) {
+        final List<IntersectionHistory> history = intersectionControlService.getIntersectionHistory(id);
+
+        return ResponseEntity.ok(history);
     }
 }

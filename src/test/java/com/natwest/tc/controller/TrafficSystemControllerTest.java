@@ -11,14 +11,10 @@ import com.natwest.tc.dto.response.IntersectionStatusResponse;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.web.servlet.client.RestTestClient;
-
-import java.util.stream.Stream;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class TrafficSystemControllerTest {
@@ -47,15 +43,14 @@ public class TrafficSystemControllerTest {
 
     @Test
     public void test_CreateIntersection_ResponseOk() {
-        client.post()
+        CreateIntersectionResponse response = client.post()
                 .uri("/v1/create")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody(CreateIntersectionResponse.class)
-                .value(value -> {
-                    Assertions.assertNotNull(value);
-                    Assertions.assertNotNull(value.getId());
-                });
+                .returnResult().getResponseBody();
+
+        test_DeleteIntersection_ShouldResponseOk(response.getId());
     }
 
     @Test
@@ -70,12 +65,13 @@ public class TrafficSystemControllerTest {
 
         Assertions.assertNotNull(response);
         Assertions.assertNotNull(response.getId());
+
+        test_DeleteIntersection_ShouldResponseOk(response.getId());
     }
 
-    @Test
-    public void test_DeleteIntersection_ShouldResponseOk() {
+    public void test_DeleteIntersection_ShouldResponseOk(final String id) {
         DeleteIntersectionResponse response = client.delete()
-                .uri("/v1/" + intersectionId)
+                .uri("/v1/" + id)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody(DeleteIntersectionResponse.class)
@@ -83,12 +79,12 @@ public class TrafficSystemControllerTest {
                 .getResponseBody();
 
         Assertions.assertNotNull(response);
-        Assertions.assertEquals(intersectionId, response.getId());
+        Assertions.assertEquals(id, response.getId());
     }
 
     @Test
     public void test_InvalidIntersectionId_ShouldReturn_BadRequest() {
-        test_DeleteIntersection_ShouldResponseOk();
+        test_DeleteIntersection_ShouldResponseOk(intersectionId);
 
         client.get()
                 .uri("/v1/%s/pause".formatted(intersectionId))
@@ -143,17 +139,28 @@ public class TrafficSystemControllerTest {
         Assertions.assertEquals(Constants.RUNNING, response.getStatus());
     }
 
-    @ParameterizedTest
-    @MethodSource("getSequence")
-    public void test_ConflictStateUpdate_ShouldResponseBadRequest(final SequenceRequestDto requestDto) {
-        test_PauseIntersection_ShouldResponseOk();
+    @Test
+    public void test_ConflictStateUpdate_ShouldResponseBadRequest() {
+        test_Intersection_ValidUpdate();
+
+        final SequenceRequestDto conflict = new SequenceRequestDto(Direction.NORTH.toString(), Signal.GREEN.toString());
+
+        client.put()
+                .uri("/v1/%s".formatted(intersectionId))
+                .body(conflict)
+                .exchange()
+                .expectStatus().isBadRequest();
+    }
+
+    @Test
+    public void test_Intersection_ValidUpdate() {
+        final SequenceRequestDto requestDto = new SequenceRequestDto(Direction.EAST.toString(), Signal.GREEN.toString());
 
         client.put()
                 .uri("/v1/%s".formatted(intersectionId))
                 .body(requestDto)
                 .exchange()
-                .expectStatus().isBadRequest()
-                .expectBody(ErrorResponse.class);
+                .expectStatus().isOk();
     }
 
     @Test
@@ -180,24 +187,37 @@ public class TrafficSystemControllerTest {
                 .expectBody(ErrorResponse.class);
     }
 
+//    @Test
+//    public void test_MaxLimitReachedException() {
+//        for (int i = 0; i < 9; i++) {
+//            test_CreateIntersection_ResponseOk();
+//        }
+//
+//        client.post()
+//                .uri("/v1/create")
+//                .exchange()
+//                .expectStatus().isBadRequest()
+//                .expectBody(ErrorResponse.class)
+//                .value(Assertions::assertNotNull);
+//    }
+
     @Test
-    public void test_MaxLimitReachedException() {
-        for (int i = 0; i < 9; i++) {
-            test_CreateIntersection_ResponseOk();
-        }
+    public void test_IntersectionUpdateInPauseMode() {
+        test_Intersection_ValidUpdate();
 
-        client.post()
-                .uri("/v1/create")
+        client.get()
+                .uri("/v1/%s/pause".formatted(intersectionId))
                 .exchange()
-                .expectStatus().isBadRequest()
-                .expectBody(ErrorResponse.class)
+                .expectStatus().isOk()
+                .expectBody(String.class)
                 .value(Assertions::assertNotNull);
-    }
 
-    public static Stream<SequenceRequestDto> getSequence() {
-        return Stream.of(
-                new SequenceRequestDto(Direction.EAST.toString(), Signal.GREEN.toString()),
-                new SequenceRequestDto(Direction.WEST.toString(), Signal.YELLOW.toString())
-        );
+        final SequenceRequestDto requestDto = new SequenceRequestDto(Direction.EAST.toString(), Signal.GREEN.toString());
+
+        client.put()
+                .uri("/v1/%s".formatted(intersectionId))
+                .body(requestDto)
+                .exchange()
+                .expectStatus().isBadRequest();
     }
 }

@@ -24,4 +24,16 @@ public enum Signal implements Serializable {
             throw new InvalidSignalStateException("Invalid Signal Name");
         }
     }
+
+    public boolean isGreen() {
+        return this == Signal.GREEN;
+    }
+
+    public boolean isYellow() {
+        return this == Signal.YELLOW;
+    }
+
+    public boolean isRed() {
+        return this == Signal.RED;
+    }
 }

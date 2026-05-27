@@ -8,6 +8,7 @@ import com.natwest.tc.dto.request.SequenceRequestDto;
 import com.natwest.tc.dto.response.IntersectionStatusResponse;
 import com.natwest.tc.exceptions.IntersectionLimitReachedException;
 import com.natwest.tc.exceptions.IntersectionNotFoundException;
+import com.natwest.tc.model.IntersectionHistory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -38,7 +39,7 @@ public class IntersectionControlService {
 
         this.intersections.put(intersection.getId(), intersection);
 
-        executor.submit(intersection);
+//        executor.submit(intersection);
 
         return intersection.getId();
 
@@ -101,5 +102,12 @@ public class IntersectionControlService {
 
     public List<String> getAllIntersectionIds() {
         return this.intersections.keySet().stream().toList();
+    }
+
+    public List<IntersectionHistory> getIntersectionHistory(final String id) {
+        validateIntersectionId(id);
+
+        Intersection intersection = this.intersections.get(id);
+        return intersection.getHistory();
     }
 }
