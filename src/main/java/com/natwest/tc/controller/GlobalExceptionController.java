@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionController {
 
     @ExceptionHandler(value = IntersectionNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidSignalDelayException(IntersectionNotFoundException ex) {
+    public ResponseEntity<ErrorResponse> handleIntersectionNotFoundException(IntersectionNotFoundException ex) {
         final ErrorResponse response = new ErrorResponse();
         response.setCode(HttpStatus.BAD_REQUEST.value());
         response.setMessage(ex.getMessage());
@@ -51,6 +51,15 @@ public class GlobalExceptionController {
         final ErrorResponse response = new ErrorResponse();
         response.setCode(HttpStatus.BAD_REQUEST.value());
         response.setMessage(ex.getMessage());
+
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(value = Exception.class)
+    public ResponseEntity<ErrorResponse> handleGenericException(final Exception ex) {
+        final ErrorResponse response = new ErrorResponse();
+        response.setCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+        response.setMessage("Internal Server Error");
 
         return ResponseEntity.badRequest().body(response);
     }
